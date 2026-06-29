@@ -39,16 +39,22 @@ export default function DashboardPage() {
       setLoading(true);
       const data = await fetchTracks();
       setTracks(data);
+      setLoading(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load tracks';
-      setError(msg);
-      if (msg.toLowerCase().includes('log in')) {
-        router.replace('/login');
+      if (
+        msg.toLowerCase().includes('session expired') ||
+        msg.toLowerCase().includes('not authenticated') ||
+        msg.toLowerCase().includes('log in')
+      ) {
+        // Redirection is handled centrally in the API client,
+        // so we return early and keep the loading state to avoid UI flashes/stuttering.
+        return;
       }
-    } finally {
+      setError(msg);
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (getToken()) loadTracks();

@@ -6,12 +6,20 @@ import type { Track, CreateTrackInput } from './schemas';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token');
+  if (!token || token === 'null' || token === 'undefined') {
+    return null;
+  }
+  return token;
 }
 
 export function getRole(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('role');
+  const role = localStorage.getItem('role');
+  if (!role || role === 'null' || role === 'undefined') {
+    return null;
+  }
+  return role;
 }
 
 export function setAuth(token: string, role: string): void {
@@ -22,6 +30,18 @@ export function setAuth(token: string, role: string): void {
 export function clearAuth(): void {
   localStorage.removeItem('access_token');
   localStorage.removeItem('role');
+}
+
+// Centralized API fetch wrapper to intercept 401 Unauthorized responses
+async function fetchApi(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    clearAuth();
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+  return res;
 }
 
 // ─── Auth API calls ───────────────────────────────────────────────────────────
@@ -35,7 +55,7 @@ export async function loginApi(
   email: string,
   password: string
 ): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetchApi(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -52,7 +72,7 @@ export async function registerApi(
   password: string,
   role: 'user' | 'admin' = 'user'
 ): Promise<{ id: number; email: string; role: string }> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  const res = await fetchApi(`${API_BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, role }),
@@ -76,12 +96,11 @@ function authHeaders(): HeadersInit {
 }
 
 export async function fetchTracks(): Promise<Track[]> {
-  const res = await fetch(`${API_BASE}/tracks`, {
+  const res = await fetchApi(`${API_BASE}/tracks`, {
     cache: 'no-store',
     headers: authHeaders(),
   });
   if (res.status === 401) {
-    clearAuth();
     throw new Error('Session expired. Please log in again.');
   }
   if (!res.ok) {
@@ -91,13 +110,12 @@ export async function fetchTracks(): Promise<Track[]> {
 }
 
 export async function createTrack(data: CreateTrackInput): Promise<Track> {
-  const res = await fetch(`${API_BASE}/tracks`, {
+  const res = await fetchApi(`${API_BASE}/tracks`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(data),
   });
   if (res.status === 401) {
-    clearAuth();
     throw new Error('Session expired. Please log in again.');
   }
   if (res.status === 403) {

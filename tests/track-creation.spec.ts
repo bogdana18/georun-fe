@@ -14,11 +14,12 @@ async function doLogin(page: Page, email: string, password: string) {
 
 // ─── Helper: register then login ─────────────────────────────────────────────
 async function doRegisterAndLogin(page: Page) {
+  const uniqueEmail = `e2e-admin-${Date.now()}-${Math.random().toString(36).substring(2, 7)}@georun.test`;
   await page.goto('/login');
   await page.waitForSelector('#tab-register');
   await page.click('#tab-register');
 
-  await page.fill('#login-email', TEST_EMAIL);
+  await page.fill('#login-email', uniqueEmail);
   await page.fill('#login-password', TEST_PASSWORD);
 
   // Select "admin" role so we can create tracks
@@ -147,12 +148,11 @@ test.describe('GeoRun Track Creation Flow', () => {
 
 
 test.describe('GeoRun User Role (view-only)', () => {
-  const USER_EMAIL = `e2e-user-${Date.now()}@georun.test`;
-
   test.beforeEach(async ({ page }) => {
+    const uniqueUserEmail = `e2e-user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}@georun.test`;
     await page.goto('/login');
     await page.click('#tab-register');
-    await page.fill('#login-email', USER_EMAIL);
+    await page.fill('#login-email', uniqueUserEmail);
     await page.fill('#login-password', TEST_PASSWORD);
     await page.selectOption('#register-role', 'user');
     await page.click('#auth-submit');
